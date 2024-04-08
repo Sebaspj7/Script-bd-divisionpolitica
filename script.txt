@@ -1,0 +1,58 @@
+-- Verificar si la tabla Moneda ya existe
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Moneda') THEN
+        RAISE NOTICE 'La tabla Moneda ya existe, no es necesario normalizar nuevamente.';
+    ELSE
+        -- Crear tabla Moneda
+        CREATE TABLE Moneda (
+            Id SERIAL PRIMARY KEY,
+            Moneda VARCHAR(50) NOT NULL,
+            Sigla VARCHAR(3),
+            Imagen VARCHAR(100) -- Este es el campo para la imagen
+        );
+
+        -- Añadir monedas únicas a la tabla Moneda
+        INSERT INTO Moneda (Moneda, Sigla)
+        SELECT DISTINCT Moneda, '' -- Ajusta esto según sea necesario
+        FROM Pais;
+        
+        RAISE NOTICE 'Tabla Moneda creada y normalizada exitosamente.';
+    END IF;
+END $$;
+-- Agregar una columna IdMoneda a la tabla Pais
+ALTER TABLE Pais
+ADD COLUMN IdMoneda INTEGER;
+
+-- Agregar una clave externa (foreign key) a la columna IdMoneda
+ALTER TABLE Pais
+ADD CONSTRAINT fk_Pais_Moneda FOREIGN KEY (IdMoneda) REFERENCES Moneda(Id);
+
+-- Verificar si los campos de Mapa y Bandera ya existen en la tabla Pais
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'Pais' 
+        AND column_name = 'Mapa'
+    ) THEN
+        RAISE NOTICE 'Los campos Mapa y Bandera ya existen en la tabla Pais.';
+    ELSE
+        -- Agregar campos de Mapa y Bandera a la tabla Pais
+        ALTER TABLE Pais
+        ADD COLUMN Mapa VARCHAR(100),
+        ADD COLUMN Bandera VARCHAR(100);
+
+        RAISE NOTICE 'Campos de Mapa y Bandera agregados a la tabla Pais.';
+    END IF;
+END $$;
+ 
+
+-- Actualizar la columna IdMoneda en la tabla Pais
+UPDATE Pais
+SET IdMoneda = (
+    SELECT Id
+    FROM Moneda
+    WHERE Moneda.Moneda = Pais.Moneda
+);
